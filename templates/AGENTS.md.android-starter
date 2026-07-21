@@ -1,0 +1,101 @@
+# AGENTS.md — Android project starter
+
+> Copy this file to your project root as `AGENTS.md`, then fill in the blanks marked `<...>`. Delete sections that don't apply.
+> This file is read by any AGENTS.md-aware AI coding tool (Claude Code, Cursor, Aider, Codex, and others). Keep it tool-agnostic.
+
+---
+
+## Project
+
+<One-sentence description. What is this app, who is it for.>
+
+## Tech stack
+
+- Kotlin `<version>`, JDK `<version>`
+- Jetpack Compose (Material 3, single-Activity)
+- Navigation Compose with **type-safe routes** (no string routes)
+- Coroutines + Flow; UI state as `StateFlow<XxxState>` with sealed `XxxAction` (UDF)
+- DI: `<Koin | Hilt>`
+- Persistence: `<Room | DataStore>` (schema export enabled)
+- Backend: `<Firebase | Ktor | your API>`
+- minSdk `<N>`, targetSdk `<N>`, compileSdk `<N>`
+- Dependencies pinned via `gradle/libs.versions.toml` — never raw strings in `build.gradle.kts`.
+
+## Modules
+
+```
+:app     → UI (Compose), ViewModel, navigation, DI wiring
+:domain  → pure Kotlin: models, use cases, repository interfaces
+:data    → Room, network, repository implementations
+```
+
+Rules:
+- `:domain` has no Android dependency.
+- `:app` never calls `:data` directly — it depends on `:domain` interfaces, injected.
+- Business logic (pricing, validation, discounts, rules) lives in `:domain/usecase/` with pure unit tests.
+
+## Working mode
+
+- **Every feature ships with tests.** No tests, work is not done.
+- Build + affected tests green → done. Do not ask "does this work?"
+- If red, iterate: diagnose → fix → re-run. If the same failure repeats 3 turns without progress, or an architectural decision is required, ask the user.
+- User approval required only for:
+  - New library or new pattern not in the stack list above
+  - Data model / schema / migration changes
+  - Billable integrations
+  - Hard-to-reverse operations (`git reset --hard`, prod push, bulk writes)
+
+## Testing (the gate)
+
+Minimum per feature:
+
+- **ViewModel** → unit test with `MainDispatcherRule` + `TestDispatcherProvider` + fake repository. Turbine for `Flow` / `SharedFlow`.
+- **UseCase / domain logic** → pure JUnit.
+- **Repository** → fake DAO / fake remote unit test. **Never** hit the real backend.
+- **Composable screen** → at least one Compose UI test: state render + one critical interaction.
+- **Validators / formatters** → parametric (table) test.
+
+Test does NOT:
+- Connect to the real backend. Use fakes / in-memory implementations.
+- Use `Thread.sleep`. Use `advanceUntilIdle()`, `IdlingResource`, or Turbine.
+- Leave hardcoded coordinates or `mutableStateOf` in Compose tests.
+
+Commands:
+```bash
+./gradlew :app:assembleDebug
+./gradlew testDebugUnitTest
+./gradlew :<module>:testDebugUnitTest --tests "*<TestClass>"
+./gradlew connectedDebugAndroidTest   # emulator required
+./gradlew lint
+```
+
+## Definition of done
+
+- [ ] `:app:assembleDebug` green
+- [ ] Affected modules' `testDebugUnitTest` green
+- [ ] New/changed screens have a green Compose UI test
+- [ ] Atomic commit with conventional-commits subject
+
+## Do / Don't
+
+**Do**
+- Hoist state out of Composables. Stateless when possible.
+- One `XxxState` per ViewModel. One `sealed XxxAction`. One `onAction()` entry point.
+- Repositories return `Result<T>` or `Flow<T>`. Errors become `state.error`, not thrown crashes.
+- Inject `DispatcherProvider` — never `Dispatchers.IO` directly (untestable).
+- Feature-scoped DI modules. One per feature package.
+- Use `Timber.e(throwable, "ClassName: what failed")` — throwable first.
+
+**Don't**
+- Put business logic in Composables.
+- Scatter `mutableStateOf` inside a ViewModel.
+- Use string routes.
+- Add a Material 2 component. Material 3 only.
+- Weaken an assertion or `@Ignore` a test to make CI green. Explain the failure instead.
+- Add co-author lines to git commits unless the project explicitly opts in.
+- Run destructive commands (`--no-verify`, `git reset --hard`, force push) without explicit approval.
+
+## Repo notes
+
+- Room schemas committed under `<data/schemas/>` — treat as source of truth for migration audits.
+- <Any per-project quirks, live docs, phase trackers.>

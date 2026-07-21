@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Node (in case examples/ ever pulls in JS tooling)
+node_modules/
+
+# Local Claude settings
+.claude/settings.local.json
